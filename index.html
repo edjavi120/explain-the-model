@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explain the Model</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1d1d1f; --muted: #66666d; --line: #dcdce1; --card: #f5f5f7;
+      --accent: #2f6fde; --up: #c2410c; --down: #1d6fb8; --obs: #15803d; --faint: #c9c9cf;
+      --hl: #fff4d6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #151517; --fg: #ececef; --muted: #a2a2aa; --line: #36363c; --card: #1f1f23;
+        --accent: #7aa7ff; --up: #fb923c; --down: #60a5fa; --obs: #4ade80; --faint: #4a4a52;
+        --hl: #3a3220;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    header { border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 5; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+    header .wrap { padding-top: 12px; padding-bottom: 10px; }
+    h1 { font-size: 20px; margin: 0 0 2px; }
+    .tagline { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+    nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    nav a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); text-decoration: none; font-size: 14px; }
+    nav a.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 14px; }
+    .controls label { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+    .controls select { max-width: calc(100vw - 110px); }
+    select, input[type=number] { font: inherit; padding: 4px 6px; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; max-width: 100%; }
+    main { padding-bottom: 60px; }
+    h2 { font-size: 26px; margin: 24px 0 4px; }
+    .question { font-size: 18px; color: var(--muted); margin: 0 0 12px; }
+    .goal { background: var(--card); border-radius: 10px; padding: 10px 14px; font-size: 15px; }
+    .step { margin-top: 28px; }
+    .step h3 { font-size: 18px; margin: 0 0 6px; display: flex; gap: 10px; align-items: baseline; }
+    .step h3 .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--fg); color: var(--bg); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+    p { margin: 8px 0; }
+    .big { font-size: 20px; }
+    .eq { font-variant-numeric: tabular-nums; background: var(--card); border-radius: 8px; padding: 10px 12px; overflow-x: auto; white-space: nowrap; }
+    .callout { border-left: 4px solid var(--accent); padding: 8px 12px; margin: 12px 0; background: var(--card); border-radius: 0 8px 8px 0; }
+    .callout.warn { border-left-color: var(--up); }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
+    td, th { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+    th { font-weight: 600; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .tablewrap { overflow-x: auto; }
+    .up { color: var(--up); } .down { color: var(--down); } .obs { color: var(--obs); } .muted { color: var(--muted); }
+    .note { color: var(--muted); font-size: 14px; }
+    .inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 8px 0; }
+    .inputs label { display: flex; flex-direction: column; font-size: 13px; gap: 2px; }
+    .btn { font: inherit; font-size: 14px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+    .btn.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+    .btnrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .slider { display: flex; align-items: center; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+    .slider input[type=range] { flex: 1; min-width: 200px; }
+    .path { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 13px; }
+    .chip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+    .chip.leaf { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+    details { margin: 10px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    svg { width: 100%; height: auto; display: block; }
+    svg text { fill: var(--muted); font-size: 12px; font-family: inherit; }
+    svg .lbl { fill: var(--fg); }
+    .person { font-size: 14px; color: var(--muted); margin-top: 6px; }
+    footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding: 16px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Explain the Model</h1>
+      <p class="tagline">How three regression models turn a person's measurements into one prediction, using real NHANES survey data.</p>
+      <nav>
+        <a href="#linear">1. Push &amp; Pull <span class="muted">(linear regression)</span></a>
+        <a href="#forest">2. Wisdom of the Forest <span class="muted">(random forest)</span></a>
+        <a href="#boosting">3. One Correction at a Time <span class="muted">(gradient boosting)</span></a>
+      </nav>
+      <div class="controls">
+        <label>Dataset <select id="dataset"></select></label>
+        <label>Person <select id="person"></select></label>
+      </div>
+      <div class="person" id="person-line"></div>
+    </div>
+  </header>
+  <main class="wrap" id="section"></main>
+  <footer class="wrap">
+    Data: CDC/NCHS National Health and Nutrition Examination Survey (NHANES). All model numbers come from the precomputed course bundle
+    (models fitted on the training rows only). The example people are validation participants the models never trained on.
+    Everything here describes associations in the data, not causes.
+  </footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
