@@ -91,11 +91,18 @@ function renderLinear(b, person) {
     <p class="question">Which features push a prediction up or down, and by how much?</p>
     <div class="goal"><b>What you'll be able to do:</b> rebuild a linear regression prediction by hand from a starting point plus
       one signed push per feature, and explain why a feature's <i>coefficient</i> is not the same thing as its <i>push</i> for one person.</div>
-    <div id="lin-body"></div>
-    ${step(5, "Change the person and watch the pushes move", `
-      <p>Edit any value. The coefficients never change; only the distances from the training average do, so only the pushes change.</p>
-      <div class="inputs" id="lin-inputs"></div>
-      <div class="btnrow"><button class="btn" id="lin-reset">Reset to ${person.label}</button></div>`)}
+    <div id="lin-s1"></div>
+    <section class="step"><h3><span class="n">2</span><span id="lin-s2-title"></span></h3>
+      <p>Each feature then moves the prediction up or down. Its <b>push</b> is
+        <b>coefficient × (this person's value − training average)</b>. Above-average values push one way, below-average values push the other.</p>
+      <div class="panel">
+        <p class="note"><b>Try it:</b> change any value and watch the bars below move. The coefficients never change; only the distance from the training average does, so only the pushes change.</p>
+        <div class="inputs" id="lin-inputs"></div>
+        <div class="btnrow"><button class="btn" id="lin-reset">Reset to ${person.label}</button></div>
+      </div>
+      <div id="lin-chart"></div>
+    </section>
+    <div id="lin-rest"></div>
     <div id="lin-general"></div>`;
   drawLinearInputs(b);
   $("lin-reset").onclick = () => { state.values = { ...person.values }; state.edited = false; drawLinearInputs(b); drawLinearBody(b, person); };
@@ -205,18 +212,19 @@ function drawLinearBody(b, person) {
   const demo = numeric.slice().sort((a, c) => Math.abs(c.coef * b.feature_stats[c.name].train_sd) - Math.abs(a.coef * b.feature_stats[a.name].train_sd))[0];
   const dDemo = demo.value - demo.ref;
 
-  $("lin-body").innerHTML = `
+  $("lin-s1").innerHTML = `
     ${step(1, "Start from the training average", `
       <p>A linear model doesn't start at zero. It starts at the <b>starting point</b>: the prediction for a made-up person whose every
         feature equals the training average (average age, average BMI, the average mix of sexes, and so on).</p>
       <p class="big">Starting point = <b>${fmt(ex.baseline)} ${u}</b></p>
       <p class="note">This is not the model's intercept (${fmt(lin.intercept)} ${u}), which is the prediction when every feature is 0, such as age 0 and BMI 0. No real person looks like that.</p>`)}
-    ${step(2, `Add one push per feature for ${who}`, `
-      <p>Each feature then moves the prediction up or down. Its <b>push</b> is
-        <b>coefficient × (this person's value − training average)</b>. Above-average values push one way, below-average values push the other.</p>
+`;
+  $("lin-s2-title").textContent = `Add one push per feature for ${who}`;
+  $("lin-chart").innerHTML = `
       ${fr.wrap(inner, "Waterfall chart from starting point through each push to the prediction")}
       <div class="eq">${fmt(ex.baseline)} ${eqTerms} = <b style="color:var(--accent)">${fmt(ex.prediction)} ${u}</b></div>
-      <p>${biggestUp ? `Biggest upward push: <b class="up">${biggestUp.label} (${signed(biggestUp.push)})</b>. ` : ""}${biggestDown ? `Biggest downward push: <b class="down">${biggestDown.label} (${signed(biggestDown.push)})</b>.` : ""}</p>`)}
+      <p>${biggestUp ? `Biggest upward push: <b class="up">${biggestUp.label} (${signed(biggestUp.push)})</b>. ` : ""}${biggestDown ? `Biggest downward push: <b class="down">${biggestDown.label} (${signed(biggestDown.push)})</b>.` : ""}</p>`;
+  $("lin-rest").innerHTML = `
     ${step(3, "Rebuild every push yourself", `
       <div class="tablewrap"><table>
         <tr><th>Feature</th><th>This person</th><th class="num">Training average</th><th class="num">Coefficient</th><th class="num">Push (${u})</th></tr>
@@ -258,7 +266,7 @@ function drawLinearGeneral(b) {
     }).join("")}
     <text x="${mid}" y="${H - 4}" text-anchor="middle">change in prediction (${u}) for a 1-SD higher value</text>
   </svg>`;
-  $("lin-general").innerHTML = step(6, "Overall importance is a different question", `
+  $("lin-general").innerHTML = step(5, "Overall importance is a different question", `
     <p>Raw coefficients can't be compared across features, because they're in different units (per year, per cm, per kg/m²).
       A fair "in general" comparison is the <b>typical effect</b>: coefficient × one standard deviation (SD) of that feature in the training data.
       This describes the whole model, not one person.</p>
@@ -427,6 +435,7 @@ function renderBoosting(b, person) {
         <button class="btn" data-r="${R}">${R}</button>
       </div>
       <div id="b-eq"></div>
+      <div id="b-mini"></div>
       <div id="b-path"></div>
       <div id="b-corr"></div>`)}
 
@@ -479,6 +488,7 @@ function renderBoosting(b, person) {
         fill="${c >= 0 ? "var(--up)" : "var(--down)"}" opacity="${i + 1 === k ? 1 : 0.55}" ${i + 1 === k ? 'stroke="var(--fg)" stroke-width="1.5"' : ""}/>`).join(""), "Corrections per round");
     drawResid(b, k);
     drawRmse(b, k, slow);
+    drawMini(b, k);
   };
   $("round").oninput = (e) => { state.round = Number(e.target.value); update(state.round); };
   document.querySelectorAll("[data-r]").forEach((el) => (el.onclick = () => { state.round = Number(el.dataset.r); update(state.round); }));
@@ -500,6 +510,21 @@ function drawResid(b, k) {
       res.map((r, i) => `<circle cx="${fr.x(r)}" cy="${fr.y(jit(i))}" r="3.5" fill="${r >= 0 ? "var(--up)" : "var(--down)"}" opacity="0.7"/>`).join(""), "Training residuals") +
     `<p class="note">Showing the saved snapshot at round <b>${snap}</b> (closest saved round at or below your slider). Typical leftover error in these 200 training people:
       <b>${fmt(rms)} ${u}</b>. Orange = model still too low, blue = too high.</p>`;
+}
+
+// Compact error chart that sits right under the round slider, so the effect of each round is visible without scrolling
+function drawMini(b, k) {
+  const gb = b.boosting, u = b.units, tr = gb.rmse.train, va = gb.rmse.validation, R = tr.length - 1;
+  const [a, c] = pad(Math.min(...tr, ...va), Math.max(tr[0], va[0]), 0.05);
+  const fr = frame({ W: 720, H: 170, padT: 10, padB: 40, xMin: 0, xMax: R, yMin: a, yMax: c, xLabel: "Round", yLabel: `RMSE (${u})`, yFmt: (v) => fmt(v, c - a < 10 ? 1 : 0), yTicks: niceTicks(a, c, 3) });
+  const L = (arr) => pathOf(arr.map((v, i) => [i, v]), fr.x, fr.y);
+  const where = k < gb.best_validation_round ? "still improving on new people" : k === gb.best_validation_round ? "lowest validation error: the stopping point" : "past the best round: overfitting the training people";
+  $("b-mini").innerHTML = `<p style="margin-bottom:0">Error at round <b>${k}</b>: training ${fmt(tr[k])} ${u}, validation <b>${fmt(va[k])} ${u}</b> (${where}).</p>` +
+    fr.wrap(`<path d="${L(tr)}" fill="none" stroke="var(--muted)" stroke-width="2"/><path d="${L(va)}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <circle cx="${fr.x(gb.best_validation_round)}" cy="${fr.y(gb.best_validation_rmse)}" r="5" fill="var(--accent)"/>
+      <line x1="${fr.x(k)}" x2="${fr.x(k)}" y1="${fr.padT}" y2="${fr.H - fr.padB}" stroke="var(--fg)" stroke-dasharray="4 3"/>
+      <circle cx="${fr.x(k)}" cy="${fr.y(va[k])}" r="4" fill="var(--fg)"/>`, "Training and validation RMSE, compact") +
+    legend([["var(--muted)", "training RMSE"], ["var(--accent)", "validation RMSE (dot = lowest)"], ["var(--fg)", "this round", true]]);
 }
 
 function drawRmse(b, k, slow) {
